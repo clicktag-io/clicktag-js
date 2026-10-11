@@ -1,4 +1,4 @@
-import { Totallytics } from './core/client'
+import { Clicktag } from './core/client'
 import { defaultKey, normalizeKey, sleep, warnNoKey, warnOnce } from './core/runtime'
 import type { SharedOptions, WaitUntil } from './core/types'
 import { attempt, debugLogger, describeError, pathOf } from './core/util'
@@ -15,7 +15,7 @@ interface RouteHandlerMethod {
 export type RouteHandler = RouteHandlerMethod['handle']
 
 export interface NextOptions extends SharedOptions {
-  /** Defaults to `process.env.TOTALLYTICS_API_KEY`. */
+  /** Defaults to `process.env.CLICKTAG_API_KEY`. */
   apiKey?: string | (() => string | null | undefined)
   /** Opaque consumer id, called once the handler has returned. */
   consumer?: (request: Request, response: Response | undefined) => string | null | undefined
@@ -38,7 +38,7 @@ interface Exchange {
 }
 
 interface Tracker {
-  client: Totallytics
+  client: Clicktag
   flushSoon: () => Promise<void>
 }
 
@@ -61,7 +61,7 @@ const trackers = new Map<string, Tracker>()
 // Imported lazily: bundlers reject a static `after` import on versions without it (14, 15.0)
 const nextServer: Promise<NextServer | undefined> = import('next/server.js').catch(() => undefined)
 
-export function withTotallytics<H extends RouteHandler>(handler: H, options: NextOptions = {}): H {
+export function withClicktag<H extends RouteHandler>(handler: H, options: NextOptions = {}): H {
   const { apiKey, consumer, route, ignore, debug } = options
   const log = debugLogger(debug)
   const { client, flushSoon } = trackerFor(options)
@@ -133,14 +133,14 @@ function trackerFor(options: NextOptions): Tracker {
   const cached = signature === undefined ? undefined : trackers.get(signature)
   if (cached) return cached
 
-  const client = new Totallytics({ endpoint, maxBatchRows, errorSamples, debug, integration: 'next' })
+  const client = new Clicktag({ endpoint, maxBatchRows, errorSamples, debug, integration: 'next' })
   const tracker = { client, flushSoon: flushScheduler(client, flushGap(flushDelayMs)) }
   if (signature !== undefined) trackers.set(signature, tracker)
   return tracker
 }
 
 // Flushes right away when idle, otherwise at most once per gap
-function flushScheduler(client: Totallytics, gapMs: number): () => Promise<void> {
+function flushScheduler(client: Clicktag, gapMs: number): () => Promise<void> {
   let lastFlushAt = 0
   let pending: Promise<void> | undefined
 

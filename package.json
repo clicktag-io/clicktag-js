@@ -1,6 +1,6 @@
 {
-  "name": "totallytics",
-  "version": "0.2.0",
+  "name": "clicktag",
+  "version": "0.3.0",
   "description": "API analytics middleware for Hono, Cloudflare Workers, Express, Fastify and Next.js",
   "keywords": [
     "analytics",
@@ -13,10 +13,10 @@
     "fastify",
     "nextjs"
   ],
-  "homepage": "https://totallytics.com",
+  "homepage": "https://clicktag.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bitgate/totallytics-js.git"
+    "url": "git+https://github.com/clicktag-io/clicktag-js.git"
   },
   "license": "MIT",
   "author": "Bitgate",

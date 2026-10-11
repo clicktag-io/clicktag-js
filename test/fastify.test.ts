@@ -3,7 +3,7 @@ import fastify4 from 'fastify4'
 import { request as httpRequest } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
-import { type FastifyOptions, totallytics } from '../src/fastify'
+import { type FastifyOptions, clicktag } from '../src/fastify'
 import { errorsOf, findRow, KEY, metricsOf, mockIngest, resetSharedState, warnSpy, warnings } from './helpers'
 
 resetSharedState()
@@ -13,7 +13,7 @@ type Factory = typeof fastify5
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function buildApp(factory: Factory, options: FastifyOptions = { apiKey: KEY }) {
-  const tt = totallytics({ consumer: (request) => request.headers['x-consumer'] as string | undefined, ...options })
+  const tt = clicktag({ consumer: (request) => request.headers['x-consumer'] as string | undefined, ...options })
   const app = factory()
   const handledErrors: string[] = []
   app.register(tt)
@@ -63,7 +63,7 @@ describe.each([
 
     expect(handledErrors).toEqual(['x is undefined', 'not yours'])
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.payload.sdk).toBe('totallytics-js/0.2.0 fastify')
+    expect(calls[0]?.payload.sdk).toBe('clicktag-js/0.3.0 fastify')
     expect(findRow(calls, '/users/:id')).toMatchObject({
       method: 'GET',
       status: 200,
@@ -131,7 +131,7 @@ describe.each([
 
   it('records a request the client aborted as 499', async () => {
     const { calls } = mockIngest()
-    const tt = totallytics({ apiKey: KEY })
+    const tt = clicktag({ apiKey: KEY })
     const app = factory()
     app.register(tt)
     app.get('/slow', async () => {
@@ -157,7 +157,7 @@ describe.each([
   })
 
   it('is a no-op without a key', async () => {
-    vi.stubEnv('TOTALLYTICS_API_KEY', '')
+    vi.stubEnv('CLICKTAG_API_KEY', '')
     const spy = warnSpy()
     const { calls } = mockIngest()
     const { app, tt } = buildApp(factory, { debug: true })
@@ -166,6 +166,6 @@ describe.each([
     await tt.flush()
 
     expect(calls).toHaveLength(0)
-    expect(warnings(spy).filter((message) => message.includes('TOTALLYTICS_API_KEY'))).toHaveLength(1)
+    expect(warnings(spy).filter((message) => message.includes('CLICKTAG_API_KEY'))).toHaveLength(1)
   })
 })

@@ -19,7 +19,7 @@ interface SharedState {
   terminating: boolean
 }
 
-const STATE = Symbol.for('totallytics.state')
+const STATE = Symbol.for('clicktag.state')
 const SHUTDOWN_BUDGET_MS = 5_000
 
 function shared(): SharedState {
@@ -37,8 +37,14 @@ export function normalizeKey(value: unknown): string | undefined {
 
 export function defaultKey(env?: unknown): string | undefined {
   try {
-    const bindings = env as { TOTALLYTICS_API_KEY?: unknown } | null | undefined
-    return normalizeKey(bindings?.TOTALLYTICS_API_KEY) ?? normalizeKey(hostProcess()?.env?.TOTALLYTICS_API_KEY)
+    const bindings = env as { CLICKTAG_API_KEY?: unknown; TOTALLYTICS_API_KEY?: unknown } | null | undefined
+    const vars = hostProcess()?.env
+    return (
+      normalizeKey(bindings?.CLICKTAG_API_KEY) ??
+      normalizeKey(vars?.CLICKTAG_API_KEY) ??
+      normalizeKey(bindings?.TOTALLYTICS_API_KEY) ??
+      normalizeKey(vars?.TOTALLYTICS_API_KEY)
+    )
   } catch {
     return undefined
   }
@@ -48,11 +54,11 @@ export function warnOnce(id: string, message: string): void {
   const { warned } = shared()
   if (warned.has(id)) return
   warned.add(id)
-  console.warn(`[totallytics] ${message}`)
+  console.warn(`[clicktag] ${message}`)
 }
 
 export function warnNoKey(debug: boolean | undefined): void {
-  if (debug) warnOnce('no-key', 'no API key (set TOTALLYTICS_API_KEY or pass apiKey), requests are not recorded')
+  if (debug) warnOnce('no-key', 'no API key (set CLICKTAG_API_KEY or pass apiKey), requests are not recorded')
 }
 
 export function randomId(): string {

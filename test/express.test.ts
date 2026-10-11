@@ -3,7 +3,7 @@ import { once } from 'node:events'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { totallytics, totallyticsErrors } from '../src/express'
+import { clicktag, clicktagErrors } from '../src/express'
 import type { IngestPayload, MetricRow } from '../src/index'
 import { KEY, resetSharedState } from './helpers'
 
@@ -13,7 +13,7 @@ const received: { authorization?: string; userAgent?: string; payload: IngestPay
 let ingest: Server
 let api: Server
 let apiUrl: string
-let tt: ReturnType<typeof totallytics>
+let tt: ReturnType<typeof clicktag>
 
 async function listen(server: Server): Promise<string> {
   server.listen(0, '127.0.0.1')
@@ -38,7 +38,7 @@ beforeAll(async () => {
   })
   const endpoint = `${await listen(ingest)}/api/ingest`
 
-  tt = totallytics({
+  tt = clicktag({
     apiKey: KEY,
     endpoint,
     consumer: (req) => req.headers['x-consumer'] as string | undefined,
@@ -65,7 +65,7 @@ beforeAll(async () => {
   })
   app.use('/api', router)
 
-  app.use(totallyticsErrors())
+  app.use(clicktagErrors())
   app.use((_error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(500).send('error')
   })
@@ -112,8 +112,8 @@ describe('express middleware', () => {
     expect(total()).toBe(6)
 
     expect(received[0]?.authorization).toBe(`Bearer ${KEY}`)
-    expect(received[0]?.userAgent).toBe('totallytics-js/0.2.0')
-    expect(received[0]?.payload.sdk).toBe('totallytics-js/0.2.0 express')
+    expect(received[0]?.userAgent).toBe('clicktag-js/0.3.0')
+    expect(received[0]?.payload.sdk).toBe('clicktag-js/0.3.0 express')
 
     const byRoute = new Map(rows().map((row) => [row.route, row]))
     expect(byRoute.get('/users/:id')).toMatchObject({

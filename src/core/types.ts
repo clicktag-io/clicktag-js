@@ -49,7 +49,7 @@ export interface RequestEntry {
 export type WaitUntil = (promise: Promise<unknown>) => void
 
 export interface SharedOptions {
-  /** Ingest URL. Default `https://totallytics.com/api/ingest`. */
+  /** Ingest URL. Default `https://clicktag.io/api/ingest`. */
   endpoint?: string
   /** Max metric rows per batch, 1 to 5000. Default 1000. */
   maxBatchRows?: number
@@ -59,7 +59,7 @@ export interface SharedOptions {
   debug?: boolean
 }
 
-export interface TotallyticsOptions extends SharedOptions {
+export interface ClicktagOptions extends SharedOptions {
   apiKey?: string
   /** Flush interval when running without waitUntil (Node, Bun, Deno). Default 10000. */
   flushIntervalMs?: number

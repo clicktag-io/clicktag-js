@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { describe, expect, it, vi } from 'vitest'
-import { type HonoOptions, totallytics } from '../src/hono'
+import { type HonoOptions, clicktag } from '../src/hono'
 import { errorsOf, findRow, KEY, metricsOf, mockIngest, resetSharedState } from './helpers'
 
 resetSharedState()
 
 function buildApp(options: HonoOptions = { apiKey: KEY }) {
-  const tt = totallytics({ consumer: (c) => c.req.header('x-consumer'), ...options })
+  const tt = clicktag({ consumer: (c) => c.req.header('x-consumer'), ...options })
   const app = new Hono()
   app.use('*', tt)
 
@@ -55,7 +55,7 @@ describe('hono middleware', () => {
     await tt.flush()
 
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.payload.sdk).toBe('totallytics-js/0.2.0 hono')
+    expect(calls[0]?.payload.sdk).toBe('clicktag-js/0.3.0 hono')
     expect(findRow(calls, '/users/:id')).toMatchObject({
       method: 'GET',
       status: 200,
@@ -83,7 +83,7 @@ describe('hono middleware', () => {
 
   it('reports the wildcard of a catch-all handler, not the raw path', async () => {
     const { calls } = mockIngest()
-    const tt = totallytics({
+    const tt = clicktag({
       apiKey: KEY,
       route: (c) => (c.req.path.startsWith('/docs/') ? '/docs/:slug' : undefined),
     })
@@ -112,7 +112,7 @@ describe('hono middleware', () => {
 
   it('reports unmatched requests as the middleware wildcard', async () => {
     const { calls } = mockIngest()
-    const tt = totallytics({ apiKey: KEY })
+    const tt = clicktag({ apiKey: KEY })
     const app = new Hono()
     app.use('*', tt)
 
@@ -172,7 +172,7 @@ describe('hono middleware', () => {
     const { app } = buildApp({ flushDelayMs: 0 })
     const waited: Promise<unknown>[] = []
     const executionCtx = { waitUntil: (promise: Promise<unknown>) => void waited.push(promise), passThroughOnException() {}, props: {} }
-    const env = { TOTALLYTICS_API_KEY: KEY }
+    const env = { CLICKTAG_API_KEY: KEY }
 
     await app.request('/users/1', {}, env, executionCtx)
     await app.request('/users/2', {}, env, executionCtx)
@@ -187,7 +187,7 @@ describe('hono middleware', () => {
   })
 
   it('is a no-op without a key', async () => {
-    vi.stubEnv('TOTALLYTICS_API_KEY', '')
+    vi.stubEnv('CLICKTAG_API_KEY', '')
     const { calls } = mockIngest()
     const { app, tt } = buildApp({})
     expect((await app.request('/users/1')).status).toBe(200)

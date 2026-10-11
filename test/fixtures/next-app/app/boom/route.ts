@@ -1,6 +1,6 @@
-import { withTotallytics } from 'totallytics/next'
+import { withClicktag } from 'clicktag/next'
 import { options } from '../../options'
 
-export const POST = withTotallytics(async () => {
+export const POST = withClicktag(async () => {
   throw new TypeError('kaboom')
 }, options)

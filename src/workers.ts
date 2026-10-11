@@ -1,4 +1,4 @@
-import { Totallytics } from './core/client'
+import { Clicktag } from './core/client'
 import { defaultKey, normalizeKey, warnNoKey } from './core/runtime'
 import type { SharedOptions, WaitUntil } from './core/types'
 import { attempt, debugLogger, describeError } from './core/util'
@@ -12,7 +12,7 @@ export interface WorkersHandler<Env = any> {
 }
 
 export interface WorkersOptions<Env = any> extends SharedOptions {
-  /** Defaults to `env.TOTALLYTICS_API_KEY`. */
+  /** Defaults to `env.CLICKTAG_API_KEY`. */
   apiKey?: string | ((env: Env) => string | null | undefined)
   /** Opaque consumer id, called after the response is ready. */
   consumer?: (request: Request, env: Env) => string | null | undefined
@@ -26,12 +26,12 @@ export interface WorkersOptions<Env = any> extends SharedOptions {
 
 type EnvOf<H> = H extends { fetch?: (request: any, env: infer E, ...rest: any[]) => any } ? E : any
 
-export function withTotallytics<H extends WorkersHandler>(handler: H, options: WorkersOptions<EnvOf<H>> = {}): H {
+export function withClicktag<H extends WorkersHandler>(handler: H, options: WorkersOptions<EnvOf<H>> = {}): H {
   const original = handler.fetch
   if (typeof original !== 'function') return handler
 
   const { apiKey, consumer, route, ignore, ...config } = options
-  const client = new Totallytics({ ...config, integration: 'workers' })
+  const client = new Clicktag({ ...config, integration: 'workers' })
   const log = debugLogger(config.debug)
 
   const track = (

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { bucket, DEFAULT_ENDPOINT, type RequestEntry, Totallytics } from '../src/index'
+import { bucket, DEFAULT_ENDPOINT, type RequestEntry, Clicktag } from '../src/index'
 import {
   accepted,
   findRow,
@@ -31,7 +31,7 @@ function entry(overrides: Partial<RequestEntry> = {}): RequestEntry {
 describe('payload', () => {
   it('sends the wire format with auth, content type and user agent', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY, integration: 'test' })
+    const client = new Clicktag({ apiKey: KEY, integration: 'test' })
     client.record(entry())
     await client.flush()
 
@@ -41,12 +41,12 @@ describe('payload', () => {
     expect(call?.headers).toMatchObject({
       authorization: `Bearer ${KEY}`,
       'content-type': 'application/json',
-      'user-agent': 'totallytics-js/0.2.0',
+      'user-agent': 'clicktag-js/0.3.0',
     })
     expect(call?.payload).toEqual({
       v: 1,
       batch_id: expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/),
-      sdk: 'totallytics-js/0.2.0 test',
+      sdk: 'clicktag-js/0.3.0 test',
       metrics: [
         {
           minute: MINUTE / 1000,
@@ -64,20 +64,30 @@ describe('payload', () => {
     })
   })
 
-  it('reads TOTALLYTICS_API_KEY from process.env by default', async () => {
+  it('reads CLICKTAG_API_KEY from process.env by default', async () => {
+    vi.stubEnv('CLICKTAG_API_KEY', KEY)
+    const { calls } = mockIngest()
+    const client = new Clicktag()
+    client.record(entry())
+    await client.flush()
+    expect(calls[0]?.headers.authorization).toBe(`Bearer ${KEY}`)
+  })
+
+  it('falls back to the legacy TOTALLYTICS_API_KEY', async () => {
+    vi.stubEnv('CLICKTAG_API_KEY', '')
     vi.stubEnv('TOTALLYTICS_API_KEY', KEY)
     const { calls } = mockIngest()
-    const client = new Totallytics()
+    const client = new Clicktag()
     client.record(entry())
     await client.flush()
     expect(calls[0]?.headers.authorization).toBe(`Bearer ${KEY}`)
   })
 
   it('is a silent no-op without a key', async () => {
-    vi.stubEnv('TOTALLYTICS_API_KEY', '')
+    vi.stubEnv('CLICKTAG_API_KEY', '')
     const warn = warnSpy()
     const { calls } = mockIngest()
-    const client = new Totallytics()
+    const client = new Clicktag()
     client.record(entry())
     await client.flush()
     expect(calls).toHaveLength(0)
@@ -88,7 +98,7 @@ describe('payload', () => {
 describe('aggregation', () => {
   it('aggregates by minute, method, route, status, user agent and consumer', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
 
     client.record(entry({ durationMs: 0.5 }))
     client.record(entry({ durationMs: 12, startedAt: MINUTE + 59_999 }))
@@ -126,7 +136,7 @@ describe('aggregation', () => {
 
   it('falls back to the raw path without query string and truncates long fields', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     client.record(
       entry({
         path: 'https://api.example.com/orders/9?card=4111#frag',
@@ -152,7 +162,7 @@ describe('aggregation', () => {
 
   it('ignores entries with an invalid status and survives garbage input', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     client.record(entry({ status: 0 }))
     client.record(entry({ status: 600 }))
     client.record(entry({ durationMs: Number.NaN, route: '/nan' }))
@@ -165,7 +175,7 @@ describe('aggregation', () => {
 
   it('splits the buffer into batches of at most maxBatchRows', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY, maxBatchRows: 1_000 })
+    const client = new Clicktag({ apiKey: KEY, maxBatchRows: 1_000 })
     for (let i = 0; i < 2_500; i++) client.record(entry({ route: `/r/${i}`, status: i === 0 ? 500 : 200 }))
     await client.flush()
 
@@ -176,7 +186,7 @@ describe('aggregation', () => {
 
   it('flushes early when the buffer reaches 10k distinct keys', () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     for (let i = 0; i < 10_000; i++) client.record(entry({ route: `/r/${i}` }))
     expect(calls).toHaveLength(10)
   })
@@ -184,7 +194,7 @@ describe('aggregation', () => {
   it('flushes on an interval without waitUntil', async () => {
     vi.useFakeTimers()
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY, flushIntervalMs: 1_000 })
+    const client = new Clicktag({ apiKey: KEY, flushIntervalMs: 1_000 })
     client.record(entry())
     expect(calls).toHaveLength(0)
 
@@ -196,7 +206,7 @@ describe('aggregation', () => {
 describe('error samples', () => {
   it('caps samples per flush at 50 for 5xx and 20 for 4xx', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     for (let i = 0; i < 80; i++) client.record(entry({ status: 503, error: new Error('upstream down') }))
     for (let i = 0; i < 40; i++) client.record(entry({ status: 404 }))
     for (let i = 0; i < 10; i++) client.record(entry({ status: 200 }))
@@ -225,7 +235,7 @@ describe('error samples', () => {
 
   it('sends no samples when errorSamples is false', async () => {
     const { calls } = mockIngest()
-    const client = new Totallytics({ apiKey: KEY, errorSamples: false })
+    const client = new Clicktag({ apiKey: KEY, errorSamples: false })
     client.record(entry({ status: 500 }))
     await client.flush()
     expect(calls[0]?.payload.errors).toEqual([])
@@ -241,7 +251,7 @@ describe('delivery', () => {
       if (index === 1) throw new TypeError('fetch failed')
       return accepted()
     })
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
 
     client.record(entry())
     const flushed = client.flush()
@@ -262,7 +272,7 @@ describe('delivery', () => {
   it.each([408, 429, 500, 503])('retries HTTP %i up to 3 attempts', async (status) => {
     vi.useFakeTimers()
     const { calls } = mockIngest(() => new Response('', { status }))
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     client.record(entry())
     const flushed = client.flush()
     await vi.advanceTimersByTimeAsync(10_000)
@@ -275,7 +285,7 @@ describe('delivery', () => {
   it('drops a 400 without retrying', async () => {
     vi.useFakeTimers()
     const { calls } = mockIngest(() => new Response('{"error":"invalid"}', { status: 400 }))
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     client.record(entry())
     const flushed = client.flush()
     await vi.advanceTimersByTimeAsync(10_000)
@@ -287,8 +297,8 @@ describe('delivery', () => {
     vi.useFakeTimers()
     const warn = warnSpy()
     const { calls } = mockIngest(() => new Response('', { status: 401 }))
-    const first = new Totallytics({ apiKey: KEY })
-    const second = new Totallytics({ apiKey: KEY })
+    const first = new Clicktag({ apiKey: KEY })
+    const second = new Clicktag({ apiKey: KEY })
 
     for (const client of [first, second, first]) {
       client.record(entry())
@@ -305,7 +315,7 @@ describe('delivery', () => {
     const { calls } = mockIngest((call) =>
       call.payload.metrics.length + call.payload.errors.length > 2 ? new Response('', { status: 413 }) : accepted(),
     )
-    const client = new Totallytics({ apiKey: KEY })
+    const client = new Clicktag({ apiKey: KEY })
     const routes = Array.from({ length: 7 }, (_, i) => `/r/${i}`)
     for (const route of routes) client.record(entry({ route }))
     await client.flush()
@@ -320,7 +330,7 @@ describe('delivery', () => {
     vi.useFakeTimers()
     const warn = warnSpy()
     const { calls } = mockIngest(() => new Response('', { status: 503 }))
-    const client = new Totallytics({ apiKey: KEY, debug: true })
+    const client = new Clicktag({ apiKey: KEY, debug: true })
 
     const flushes: Promise<void>[] = []
     for (let i = 0; i < 21; i++) {

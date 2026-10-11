@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
-import { withTotallytics } from 'totallytics/next'
+import { withClicktag } from 'clicktag/next'
 import { options } from '../../options'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withTotallytics(async () => redirect('/users/1'), options)
+export const GET = withClicktag(async () => redirect('/users/1'), options)

@@ -1,11 +1,11 @@
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest } from 'fastify'
-import { Totallytics } from './core/client'
+import { Clicktag } from './core/client'
 import { defaultKey, normalizeKey, warnNoKey } from './core/runtime'
 import type { SharedOptions } from './core/types'
 import { attempt, debugLogger, describeError } from './core/util'
 
 export interface FastifyOptions extends SharedOptions {
-  /** Defaults to `process.env.TOTALLYTICS_API_KEY`. */
+  /** Defaults to `process.env.CLICKTAG_API_KEY`. */
   apiKey?: string | (() => string | null | undefined)
   /** Opaque consumer id, called once the response has finished. */
   consumer?: (request: FastifyRequest, reply: FastifyReply) => string | null | undefined
@@ -17,7 +17,7 @@ export interface FastifyOptions extends SharedOptions {
   flushIntervalMs?: number
 }
 
-export type TotallyticsPlugin = FastifyPluginCallback & {
+export type ClicktagPlugin = FastifyPluginCallback & {
   /** Sends everything buffered and waits for in-flight batches. Never rejects. */
   flush(): Promise<void>
 }
@@ -31,9 +31,9 @@ interface RoutedRequest {
 const CATCH_ALL_ROUTE = '/*'
 const CLIENT_CLOSED_REQUEST = 499
 
-export function totallytics(options: FastifyOptions = {}): TotallyticsPlugin {
+export function clicktag(options: FastifyOptions = {}): ClicktagPlugin {
   const { apiKey, consumer, route, ignore, ...config } = options
-  const client = new Totallytics({ ...config, integration: 'fastify' })
+  const client = new Clicktag({ ...config, integration: 'fastify' })
   const log = debugLogger(config.debug)
   const capturedErrors = new WeakMap<FastifyRequest, unknown>()
 
@@ -97,8 +97,8 @@ export function totallytics(options: FastifyOptions = {}): TotallyticsPlugin {
   return Object.assign(plugin, {
     flush: () => client.flush(),
     [Symbol.for('skip-override')]: true,
-    [Symbol.for('fastify.display-name')]: 'totallytics',
-    [Symbol.for('plugin-meta')]: { name: 'totallytics' },
+    [Symbol.for('fastify.display-name')]: 'clicktag',
+    [Symbol.for('plugin-meta')]: { name: 'clicktag' },
   })
 }
 

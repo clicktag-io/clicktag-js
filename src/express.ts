@@ -1,4 +1,4 @@
-import { Totallytics } from './core/client'
+import { Clicktag } from './core/client'
 import { defaultKey, normalizeKey, warnNoKey } from './core/runtime'
 import type { SharedOptions } from './core/types'
 import { attempt, debugLogger, describeError } from './core/util'
@@ -22,7 +22,7 @@ export interface ExpressResponseLike {
 export type NextFunctionLike = (error?: unknown) => void
 
 export interface ExpressOptions<Req = ExpressRequestLike, Res = ExpressResponseLike> extends SharedOptions {
-  /** Defaults to `process.env.TOTALLYTICS_API_KEY`. */
+  /** Defaults to `process.env.CLICKTAG_API_KEY`. */
   apiKey?: string | (() => string | null | undefined)
   /** Opaque consumer id, called once the response has finished. */
   consumer?: (req: Req, res: Res) => string | null | undefined
@@ -34,7 +34,7 @@ export interface ExpressOptions<Req = ExpressRequestLike, Res = ExpressResponseL
   flushIntervalMs?: number
 }
 
-export type TotallyticsMiddleware<Req = ExpressRequestLike, Res = ExpressResponseLike> = ((
+export type ClicktagMiddleware<Req = ExpressRequestLike, Res = ExpressResponseLike> = ((
   req: Req,
   res: Res,
   next: NextFunctionLike,
@@ -48,12 +48,12 @@ export type ErrorCaptureMiddleware = (error: unknown, req: object, res: unknown,
 const CLIENT_CLOSED_REQUEST = 499
 const capturedErrors = new WeakMap<object, unknown>()
 
-export function totallytics<
+export function clicktag<
   Req extends ExpressRequestLike = ExpressRequestLike,
   Res extends ExpressResponseLike = ExpressResponseLike,
->(options: ExpressOptions<Req, Res> = {}): TotallyticsMiddleware<Req, Res> {
+>(options: ExpressOptions<Req, Res> = {}): ClicktagMiddleware<Req, Res> {
   const { apiKey, consumer, route, ignore, ...config } = options
-  const client = new Totallytics({ ...config, integration: 'express' })
+  const client = new Clicktag({ ...config, integration: 'express' })
   const log = debugLogger(config.debug)
 
   const track = (req: Req, res: Res, startedAt: number, durationMs: number, aborted: boolean) => {
@@ -104,8 +104,8 @@ export function totallytics<
 }
 
 /** Error middleware that attaches `err.message` to error samples. Register it after your routes. */
-export function totallyticsErrors(): ErrorCaptureMiddleware {
-  return function totallyticsErrorCapture(error, req, _res, next) {
+export function clicktagErrors(): ErrorCaptureMiddleware {
+  return function clicktagErrorCapture(error, req, _res, next) {
     try {
       capturedErrors.set(req, error)
     } catch {

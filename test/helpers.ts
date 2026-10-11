@@ -57,7 +57,7 @@ export function warnings(spy: ReturnType<typeof warnSpy>): string[] {
 export function resetSharedState(): void {
   beforeEach(() => {
     const state = (globalThis as Record<symbol, { warned: Set<string>; clients: Set<unknown> } | undefined>)[
-      Symbol.for('totallytics.state')
+      Symbol.for('clicktag.state')
     ]
     state?.warned.clear()
     state?.clients.clear()
