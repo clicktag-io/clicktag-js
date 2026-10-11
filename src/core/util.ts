@@ -33,5 +33,5 @@ export function attempt<T>(callback: () => T, log?: (message: string) => void): 
 }
 
 export function debugLogger(debug: boolean | undefined): ((message: string) => void) | undefined {
-  return debug ? (message) => console.warn(`[totallytics] ${message}`) : undefined
+  return debug ? (message) => console.warn(`[clicktag] ${message}`) : undefined
 }

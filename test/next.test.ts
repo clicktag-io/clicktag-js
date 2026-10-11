@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation.js'
 import { NextRequest } from 'next/server.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { type NextOptions, type RouteContext, withTotallytics } from '../src/next'
+import { type NextOptions, type RouteContext, withClicktag } from '../src/next'
 import { errorsOf, findRow, KEY, metricsOf, mockIngest, resetSharedState } from './helpers'
 
 const { after } = vi.hoisted(() => ({ after: vi.fn() }))
@@ -38,7 +38,7 @@ const ok: Handler = async () => Response.json({ ok: true })
 describe('next route handler wrapper', () => {
   it('derives route templates from params after the response', async () => {
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 0 })
+    const GET = withClicktag(ok, { apiKey: KEY, flushDelayMs: 0 })
     const cases: [string, RouteContext['params']][] = [
       ['/users/42', Promise.resolve({ id: '42' })],
       ['/users/43', { id: '43' }],
@@ -59,7 +59,7 @@ describe('next route handler wrapper', () => {
 
     await runAfterTasks()
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.payload.sdk).toBe('totallytics-js/0.2.0 next')
+    expect(calls[0]?.payload.sdk).toBe('clicktag-js/0.3.0 next')
     expect(findRow(calls, '/users/:id')).toMatchObject({ method: 'GET', status: 200, user_agent: 'okhttp/4.12.0', count: 3 })
     expect(metricsOf(calls).map((row) => row.route).sort()).toEqual([
       '/docs',
@@ -74,7 +74,7 @@ describe('next route handler wrapper', () => {
 
   it('keeps the basePath in paths and templates', async () => {
     const { calls } = mockIngest()
-    const GET = withTotallytics(
+    const GET = withClicktag(
       async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) =>
         Response.json({ id: (await params).id, path: req.nextUrl.pathname }),
       { apiKey: KEY, flushDelayMs: 0 },
@@ -90,10 +90,10 @@ describe('next route handler wrapper', () => {
   it('records thrown errors as 500 and rethrows them', async () => {
     const { calls } = mockIngest()
     const options: NextOptions = { apiKey: KEY, flushDelayMs: 0 }
-    const POST = withTotallytics<Handler>(async () => {
+    const POST = withClicktag<Handler>(async () => {
       throw new TypeError('x is undefined')
     }, options)
-    const PUT = withTotallytics<Handler>(async () => {
+    const PUT = withClicktag<Handler>(async () => {
       throw 'boom'
     }, options)
 
@@ -112,8 +112,8 @@ describe('next route handler wrapper', () => {
   it('records redirect() and notFound() with the status Next responds with', async () => {
     const { calls } = mockIngest()
     const options: NextOptions = { apiKey: KEY, flushDelayMs: 0 }
-    const toLogin = withTotallytics<Handler>(async () => redirect('/login'), options)
-    const missing = withTotallytics<Handler>(async () => notFound(), options)
+    const toLogin = withClicktag<Handler>(async () => redirect('/login'), options)
+    const missing = withClicktag<Handler>(async () => notFound(), options)
 
     await expect(toLogin(request('/account'), {})).rejects.toMatchObject({ digest: expect.stringMatching(/^NEXT_REDIRECT;/) })
     await expect(missing(request('/posts/9'), { params: Promise.resolve({ id: '9' }) })).rejects.toBeDefined()
@@ -128,10 +128,10 @@ describe('next route handler wrapper', () => {
     const { calls } = mockIngest()
     const options: NextOptions = { apiKey: KEY, flushDelayMs: 0 }
     const dynamic = Object.assign(new Error('Dynamic server usage'), { digest: 'DYNAMIC_SERVER_USAGE' })
-    const bailout = withTotallytics<Handler>(async () => {
+    const bailout = withClicktag<Handler>(async () => {
       throw dynamic
     }, options)
-    const empty = withTotallytics<Handler>(async () => undefined as unknown as Response, options)
+    const empty = withClicktag<Handler>(async () => undefined as unknown as Response, options)
 
     await expect(bailout(request('/static'), {})).rejects.toBe(dynamic)
     await empty(request('/empty'), {})
@@ -143,10 +143,10 @@ describe('next route handler wrapper', () => {
   it('honors route, ignore and consumer overrides without letting them throw', async () => {
     const { calls } = mockIngest()
     const base: NextOptions = { apiKey: KEY, flushDelayMs: 0 }
-    const fixed = withTotallytics(ok, { ...base, route: '/people/:id' })
-    const computed = withTotallytics(ok, { ...base, route: (req) => (req.method === 'POST' ? '/imports' : undefined) })
-    const ignored = withTotallytics(ok, { ...base, ignore: () => true })
-    const failing = withTotallytics(ok, {
+    const fixed = withClicktag(ok, { ...base, route: '/people/:id' })
+    const computed = withClicktag(ok, { ...base, route: (req) => (req.method === 'POST' ? '/imports' : undefined) })
+    const ignored = withClicktag(ok, { ...base, ignore: () => true })
+    const failing = withClicktag(ok, {
       ...base,
       consumer: () => {
         throw new Error('consumer lookup failed')
@@ -165,7 +165,7 @@ describe('next route handler wrapper', () => {
 
   it('flushes right away when idle and at most once per gap under load', async () => {
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 300 })
+    const GET = withClicktag(ok, { apiKey: KEY, flushDelayMs: 300 })
 
     await GET(request('/a'), {})
     await runAfterTasks()
@@ -186,8 +186,8 @@ describe('next route handler wrapper', () => {
 
   it('shares one client between wrappers with the same options', async () => {
     const { calls } = mockIngest()
-    const users = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 5 })
-    const posts = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 5 })
+    const users = withClicktag(ok, { apiKey: KEY, flushDelayMs: 5 })
+    const posts = withClicktag(ok, { apiKey: KEY, flushDelayMs: 5 })
 
     await users(request('/users/1'), { params: Promise.resolve({ id: '1' }) })
     await posts(request('/posts/1'), { params: Promise.resolve({ id: '1' }) })
@@ -200,7 +200,7 @@ describe('next route handler wrapper', () => {
   it('does not track during next build', async () => {
     vi.stubEnv('NEXT_PHASE', 'phase-production-build')
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 0 })
+    const GET = withClicktag(ok, { apiKey: KEY, flushDelayMs: 0 })
 
     expect((await GET(request('/sitemap'), {})).status).toBe(200)
     expect(after).not.toHaveBeenCalled()
@@ -209,7 +209,7 @@ describe('next route handler wrapper', () => {
 
   it('records nothing when reading the request throws during static generation', async () => {
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 0 })
+    const GET = withClicktag(ok, { apiKey: KEY, flushDelayMs: 0 })
     const prerendering = new Proxy(request('/feed'), {
       get(target, property) {
         if (property === 'headers') throw Object.assign(new Error('Dynamic server usage'), { digest: 'DYNAMIC_SERVER_USAGE' })
@@ -227,7 +227,7 @@ describe('next route handler wrapper', () => {
       throw new Error('`after` was called outside a request scope.')
     })
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok, { apiKey: KEY, flushDelayMs: 0 })
+    const GET = withClicktag(ok, { apiKey: KEY, flushDelayMs: 0 })
     const waited: Promise<unknown>[] = []
     const vercel = Symbol.for('@vercel/request-context')
     const scope = globalThis as Record<symbol, unknown>
@@ -249,9 +249,9 @@ describe('next route handler wrapper', () => {
   })
 
   it('is a no-op without a key', async () => {
-    vi.stubEnv('TOTALLYTICS_API_KEY', '')
+    vi.stubEnv('CLICKTAG_API_KEY', '')
     const { calls } = mockIngest()
-    const GET = withTotallytics(ok)
+    const GET = withClicktag(ok)
     expect((await GET(request('/users/1'), {})).status).toBe(200)
     await runAfterTasks()
     expect(calls).toHaveLength(0)

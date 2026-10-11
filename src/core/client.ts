@@ -1,10 +1,10 @@
 import { Aggregator, MAX_KEYS, type Measurement } from './aggregator'
 import { defaultKey, flushOnShutdown, normalizeKey, sleep, startInterval, warnNoKey } from './runtime'
 import { type Batch, createBatch, Transport, USER_AGENT } from './transport'
-import type { RequestEntry, TotallyticsOptions, WaitUntil } from './types'
+import type { RequestEntry, ClicktagOptions, WaitUntil } from './types'
 import { clip, describeError, pathOf } from './util'
 
-export const DEFAULT_ENDPOINT = 'https://totallytics.com/api/ingest'
+export const DEFAULT_ENDPOINT = 'https://clicktag.io/api/ingest'
 
 const MAX_SDK = 64
 const MAX_PATH = 512
@@ -13,7 +13,7 @@ const MAX_CONSUMER = 128
 const MAX_MESSAGE = 1000
 const STALE_FLUSH_MS = 60_000
 
-export class Totallytics {
+export class Clicktag {
   apiKey: string | undefined
 
   private readonly sdk: string
@@ -27,7 +27,7 @@ export class Totallytics {
   private scheduled: Promise<void> | undefined
   private scheduledAt = 0
 
-  constructor(options: TotallyticsOptions = {}) {
+  constructor(options: ClicktagOptions = {}) {
     this.apiKey = normalizeKey(options.apiKey) ?? defaultKey()
     this.sdk = clip(options.integration ? `${USER_AGENT} ${options.integration}` : USER_AGENT, MAX_SDK)
     this.debug = options.debug === true
@@ -113,7 +113,7 @@ export class Totallytics {
   }
 
   private log(message: string): void {
-    if (this.debug) console.warn(`[totallytics] ${message}`)
+    if (this.debug) console.warn(`[clicktag] ${message}`)
   }
 }
 

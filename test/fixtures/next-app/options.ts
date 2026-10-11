@@ -1,7 +1,7 @@
-import type { NextOptions } from 'totallytics/next'
+import type { NextOptions } from 'clicktag/next'
 
 export const options: NextOptions = {
-  endpoint: process.env.TOTALLYTICS_ENDPOINT,
+  endpoint: process.env.CLICKTAG_ENDPOINT,
   flushDelayMs: 0,
   debug: true,
 }

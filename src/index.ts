@@ -1,4 +1,4 @@
-export { DEFAULT_ENDPOINT, Totallytics } from './core/client'
+export { DEFAULT_ENDPOINT, Clicktag } from './core/client'
 export { bucket } from './core/histogram'
 export type {
   ErrorRow,
@@ -6,7 +6,7 @@ export type {
   MetricRow,
   RequestEntry,
   SharedOptions,
-  TotallyticsOptions,
+  ClicktagOptions,
   WaitUntil,
 } from './core/types'
 export { VERSION } from './version'

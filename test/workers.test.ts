@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { type ExecutionContextLike, withTotallytics } from '../src/workers'
+import { type ExecutionContextLike, withClicktag } from '../src/workers'
 import { errorsOf, findRow, KEY, metricsOf, mockIngest, resetSharedState } from './helpers'
 
 resetSharedState()
 
 interface Env {
-  TOTALLYTICS_API_KEY?: string
+  CLICKTAG_API_KEY?: string
   CUSTOM_KEY?: string
 }
 
-const env: Env = { TOTALLYTICS_API_KEY: KEY }
+const env: Env = { CLICKTAG_API_KEY: KEY }
 
 function fakeCtx() {
   const promises: Promise<unknown>[] = []
@@ -29,16 +29,16 @@ const handler = {
   scheduled: vi.fn(),
 }
 
-describe('withTotallytics', () => {
+describe('withClicktag', () => {
   it('passes other handler keys through untouched', () => {
-    const worker = withTotallytics(handler)
+    const worker = withClicktag(handler)
     expect(worker.scheduled).toBe(handler.scheduled)
     expect(worker.fetch).not.toBe(handler.fetch)
   })
 
   it('shares one delayed flush across requests through every ctx.waitUntil', async () => {
     const { calls } = mockIngest()
-    const worker = withTotallytics(handler, {
+    const worker = withClicktag(handler, {
       flushDelayMs: 20,
       consumer: (request) => request.headers.get('x-consumer'),
     })
@@ -62,7 +62,7 @@ describe('withTotallytics', () => {
 
     await Promise.all([...first.promises, ...second.promises])
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.payload.sdk).toBe('totallytics-js/0.2.0 workers')
+    expect(calls[0]?.payload.sdk).toBe('clicktag-js/0.3.0 workers')
     expect(calls[0]?.headers.authorization).toBe(`Bearer ${KEY}`)
     expect(findRow(calls, '/users/1')).toMatchObject({ status: 200, user_agent: 'okhttp/4.12.0', consumer: 'cust_42' })
     expect(findRow(calls, '/missing')?.status).toBe(404)
@@ -76,7 +76,7 @@ describe('withTotallytics', () => {
 
   it('rethrows handler errors and records them as 500', async () => {
     const { calls } = mockIngest()
-    const worker = withTotallytics(handler, { flushDelayMs: 0 })
+    const worker = withClicktag(handler, { flushDelayMs: 0 })
     const { ctx, promises } = fakeCtx()
 
     await expect(worker.fetch(new Request('https://api.example.com/boom'), env, ctx)).rejects.toThrow('kaboom')
@@ -88,7 +88,7 @@ describe('withTotallytics', () => {
 
   it('flushes immediately through waitUntil when the buffer hits maxBatchRows', async () => {
     const { calls } = mockIngest()
-    const worker = withTotallytics(handler, { maxBatchRows: 2, flushDelayMs: 20 })
+    const worker = withClicktag(handler, { maxBatchRows: 2, flushDelayMs: 20 })
     const first = fakeCtx()
     const second = fakeCtx()
 
@@ -104,7 +104,7 @@ describe('withTotallytics', () => {
 
   it('supports apiKey from env, route and ignore overrides', async () => {
     const { calls } = mockIngest()
-    const worker = withTotallytics(handler, {
+    const worker = withClicktag(handler, {
       apiKey: (bindings) => bindings.CUSTOM_KEY,
       route: (request) => new URL(request.url).pathname.replace(/\/\d+/g, '/:id'),
       ignore: (request) => new URL(request.url).pathname === '/health',
@@ -123,7 +123,7 @@ describe('withTotallytics', () => {
 
   it('does nothing without a key', async () => {
     const { calls } = mockIngest()
-    const worker = withTotallytics(handler, { flushDelayMs: 0 })
+    const worker = withClicktag(handler, { flushDelayMs: 0 })
     const { ctx, promises } = fakeCtx()
 
     const response = await worker.fetch(new Request('https://api.example.com/users/1'), {}, ctx)

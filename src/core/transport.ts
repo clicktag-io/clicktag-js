@@ -3,7 +3,7 @@ import { randomId, sleep, warnOnce } from './runtime'
 import type { ErrorRow, IngestPayload, MetricRow } from './types'
 import { describeError } from './util'
 
-export const USER_AGENT = `totallytics-js/${VERSION}`
+export const USER_AGENT = `clicktag-js/${VERSION}`
 
 const MAX_ATTEMPTS = 3
 const MAX_PENDING = 20
@@ -111,7 +111,7 @@ export class Transport {
       return 'done'
     }
     if (status === 401) {
-      warnOnce('unauthorized', 'ingest rejected the API key (401), analytics are being dropped. Check TOTALLYTICS_API_KEY.')
+      warnOnce('unauthorized', 'ingest rejected the API key (401), analytics are being dropped. Check CLICKTAG_API_KEY.')
       return 'drop'
     }
     if (status === 413) return 'split'
@@ -132,7 +132,7 @@ export class Transport {
   }
 
   private log(message: string): void {
-    if (this.debug) console.warn(`[totallytics] ${message}`)
+    if (this.debug) console.warn(`[clicktag] ${message}`)
   }
 }
 

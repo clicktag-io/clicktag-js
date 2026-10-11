@@ -1,11 +1,11 @@
 import type { Context, Env, MiddlewareHandler } from 'hono'
-import { Totallytics } from './core/client'
+import { Clicktag } from './core/client'
 import { defaultKey, normalizeKey, warnNoKey } from './core/runtime'
 import type { SharedOptions, WaitUntil } from './core/types'
 import { attempt, debugLogger, describeError } from './core/util'
 
 export interface HonoOptions<E extends Env = any> extends SharedOptions {
-  /** Defaults to `c.env.TOTALLYTICS_API_KEY`, then `process.env.TOTALLYTICS_API_KEY`. */
+  /** Defaults to `c.env.CLICKTAG_API_KEY`, then `process.env.CLICKTAG_API_KEY`. */
   apiKey?: string | ((c: Context<E>) => string | null | undefined)
   /** Opaque consumer id, called after the response is ready. */
   consumer?: (c: Context<E>) => string | null | undefined
@@ -19,7 +19,7 @@ export interface HonoOptions<E extends Env = any> extends SharedOptions {
   flushDelayMs?: number
 }
 
-export type TotallyticsMiddleware<E extends Env = any> = MiddlewareHandler<E> & {
+export type ClicktagMiddleware<E extends Env = any> = MiddlewareHandler<E> & {
   /** Sends everything buffered and waits for in-flight batches. Never rejects. */
   flush(): Promise<void>
 }
@@ -31,9 +31,9 @@ interface MatchedRoute {
 
 const CATCH_ALL_ROUTE = '/*'
 
-export function totallytics<E extends Env = any>(options: HonoOptions<E> = {}): TotallyticsMiddleware<E> {
+export function clicktag<E extends Env = any>(options: HonoOptions<E> = {}): ClicktagMiddleware<E> {
   const { apiKey, consumer, route, ignore, ...config } = options
-  const client = new Totallytics({ ...config, integration: 'hono' })
+  const client = new Clicktag({ ...config, integration: 'hono' })
   const log = debugLogger(config.debug)
 
   const track = (c: Context<E>, startedAt: number, durationMs: number, failed: boolean, thrown: unknown) => {

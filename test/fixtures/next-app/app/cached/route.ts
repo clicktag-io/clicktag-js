@@ -1,6 +1,6 @@
-import { withTotallytics } from 'totallytics/next'
+import { withClicktag } from 'clicktag/next'
 import { options } from '../../options'
 
 export const revalidate = 1
 
-export const GET = withTotallytics(async () => Response.json({ builtAt: Date.now() }), options)
+export const GET = withClicktag(async () => Response.json({ builtAt: Date.now() }), options)

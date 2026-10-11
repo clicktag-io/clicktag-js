@@ -41,7 +41,7 @@ export function describeNextApp({ next, react, typesReact, hasAfter }: NextSetup
         throw new Error('dist/ is missing, run `npm run build` first')
       })
 
-      dir = await mkdtemp(join(tmpdir(), `totallytics-next-${next}-`))
+      dir = await mkdtemp(join(tmpdir(), `clicktag-next-${next}-`))
       await cp(FIXTURE, dir, { recursive: true })
       await writeFile(
         join(dir, 'package.json'),
@@ -54,7 +54,7 @@ export function describeNextApp({ next, react, typesReact, hasAfter }: NextSetup
       await run('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error'], dir, process.env, 300_000)
 
       // We copy the build instead of linking it so the bundler resolves it like a registry install
-      const installed = join(dir, 'node_modules/totallytics')
+      const installed = join(dir, 'node_modules/clicktag')
       await mkdir(installed, { recursive: true })
       await cp(join(ROOT, 'package.json'), join(installed, 'package.json'))
       await cp(join(ROOT, 'dist'), join(installed, 'dist'), { recursive: true })
@@ -63,8 +63,8 @@ export function describeNextApp({ next, react, typesReact, hasAfter }: NextSetup
       const env = {
         ...process.env,
         NEXT_TELEMETRY_DISABLED: '1',
-        TOTALLYTICS_API_KEY: KEY,
-        TOTALLYTICS_ENDPOINT: ingest.url,
+        CLICKTAG_API_KEY: KEY,
+        CLICKTAG_ENDPOINT: ingest.url,
       }
 
       await run(process.execPath, ['node_modules/next/dist/bin/next', 'build'], dir, env, 300_000)
@@ -130,7 +130,7 @@ export function describeNextApp({ next, react, typesReact, hasAfter }: NextSetup
 
       const call = ingest.calls[0]
       expect(call?.headers.authorization).toBe(`Bearer ${KEY}`)
-      expect(call?.payload.sdk).toBe(`totallytics-js/${VERSION} next`)
+      expect(call?.payload.sdk).toBe(`clicktag-js/${VERSION} next`)
 
       const errors = ingest.calls.flatMap((each) => each.payload.errors)
       expect(errors.find((row) => row.status === 500)).toMatchObject({ route: '/boom', path: '/boom', message: 'TypeError: kaboom' })

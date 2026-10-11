@@ -1,70 +1,70 @@
-# totallytics
+# clicktag
 
-API analytics middleware for [Totallytics](https://totallytics.com): request counts, status codes, latency, clients and consumers for Hono, Cloudflare Workers, Express, Fastify and Next.js. Zero dependencies. Runs on Node 18+, Bun, Deno and Workers.
+API analytics middleware for [Clicktag](https://clicktag.io): request counts, status codes, latency, clients and consumers for Hono, Cloudflare Workers, Express, Fastify and Next.js. Zero dependencies. Runs on Node 18+, Bun, Deno and Workers.
 
 Requests are aggregated in memory and sent in small background batches. The middleware never throws into your code and never delays a response.
 
 ```sh
-npm i totallytics
+npm i clicktag
 ```
 
-Set `TOTALLYTICS_API_KEY` as a Workers secret, or as an environment variable on Node, Bun and Deno (`--allow-env`). Without a key the middleware does nothing.
+Set `CLICKTAG_API_KEY` as a Workers secret, or as an environment variable on Node, Bun and Deno (`--allow-env`). Without a key the middleware does nothing.
 
 ## Hono
 
 ```ts
 import { Hono } from 'hono'
-import { totallytics } from 'totallytics/hono'
+import { clicktag } from 'clicktag/hono'
 
 const app = new Hono()
-app.use('*', totallytics())
+app.use('*', clicktag())
 
 app.get('/users/:id', (c) => c.json({ id: c.req.param('id') }))
 
 export default app
 ```
 
-Register it first so it sees every request. Routes are reported as templates (`/users/:id`), including sub-apps and `basePath`. When no concrete route answers (an `app.all('*')` catch-all, a 404, or middleware that responds on its own), the wildcard that ran is reported instead, like `/*` or `/api/*`, never the raw path. Pass `route` to split those further. On Workers the key comes from `c.env.TOTALLYTICS_API_KEY` and flushing goes through `c.executionCtx.waitUntil`.
+Register it first so it sees every request. Routes are reported as templates (`/users/:id`), including sub-apps and `basePath`. When no concrete route answers (an `app.all('*')` catch-all, a 404, or middleware that responds on its own), the wildcard that ran is reported instead, like `/*` or `/api/*`, never the raw path. Pass `route` to split those further. On Workers the key comes from `c.env.CLICKTAG_API_KEY` and flushing goes through `c.executionCtx.waitUntil`.
 
 ## Cloudflare Workers
 
 ```ts
-import { withTotallytics } from 'totallytics/workers'
+import { withClicktag } from 'clicktag/workers'
 
-export default withTotallytics({
+export default withClicktag({
   async fetch(request, env, ctx) {
     return new Response('hello')
   },
 } satisfies ExportedHandler<Env>)
 ```
 
-Other handlers (`scheduled`, `queue`, ...) pass through untouched. Plain Workers have no router, so the raw path is sent and Totallytics collapses id-like segments. Pass `route` to send your own templates.
+Other handlers (`scheduled`, `queue`, ...) pass through untouched. Plain Workers have no router, so the raw path is sent and Clicktag collapses id-like segments. Pass `route` to send your own templates.
 
 ## Express
 
 ```ts
 import express from 'express'
-import { totallytics, totallyticsErrors } from 'totallytics/express'
+import { clicktag, clicktagErrors } from 'clicktag/express'
 
 const app = express()
-app.use(totallytics())
+app.use(clicktag())
 
 app.get('/users/:id', (req, res) => res.json({ id: req.params.id }))
 
-app.use(totallyticsErrors())
+app.use(clicktagErrors())
 app.use(errorHandler)
 ```
 
-`totallyticsErrors()` is optional: it attaches `err.message` to error samples and passes the error on. Routes are `req.baseUrl + req.route.path`, so a mount path with params (`/orgs/:orgId`) shows up with the actual value, which Totallytics collapses when it looks like an id.
+`clicktagErrors()` is optional: it attaches `err.message` to error samples and passes the error on. Routes are `req.baseUrl + req.route.path`, so a mount path with params (`/orgs/:orgId`) shows up with the actual value, which Clicktag collapses when it looks like an id.
 
 ## Fastify
 
 ```ts
 import Fastify from 'fastify'
-import { totallytics } from 'totallytics/fastify'
+import { clicktag } from 'clicktag/fastify'
 
 const app = Fastify()
-app.register(totallytics())
+app.register(clicktag())
 
 app.get('/users/:id', async (request) => request.params)
 ```
@@ -75,14 +75,14 @@ Fastify 4 and 5. Register it on the root instance: the hooks then cover every ro
 
 ```ts
 // app/users/[id]/route.ts
-import { withTotallytics } from 'totallytics/next'
+import { withClicktag } from 'clicktag/next'
 
 async function getUser(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   return Response.json({ id })
 }
 
-export const GET = withTotallytics(getUser)
+export const GET = withClicktag(getUser)
 ```
 
 Wrap each App Router route handler, on Next.js 14 and up, in the Node.js or edge runtime. Pages Router API routes are not supported.
@@ -97,11 +97,11 @@ Next.js has no runtime API for the matched route, so the template is rebuilt fro
 
 | Option | Default | |
 | --- | --- | --- |
-| `apiKey` | `TOTALLYTICS_API_KEY` | String or function: `(c)` on Hono, `(env)` on Workers, `()` on Express, Fastify and Next.js. One key per middleware |
+| `apiKey` | `CLICKTAG_API_KEY` | String or function: `(c)` on Hono, `(env)` on Workers, `()` on Express, Fastify and Next.js. One key per middleware |
 | `consumer` | none | Returns an opaque id for the caller: `(c)`, `(request, env)`, `(req, res)`, `(request, reply)` or `(request, response)` |
 | `route` | detected | Overrides the route template, same arguments as `consumer`. On Next.js a string or `(request)` |
 | `ignore` | none | Return `true` to skip a request, same arguments as `consumer` |
-| `endpoint` | `https://totallytics.com/api/ingest` | Ingest URL |
+| `endpoint` | `https://clicktag.io/api/ingest` | Ingest URL |
 | `flushIntervalMs` | `10000` | Flush interval on Node, Bun and Deno |
 | `flushDelayMs` | `5000` | Delay before the `waitUntil` flush on Workers. On Next.js the minimum gap between flushes, default `1000`. Max 20000 |
 | `maxBatchRows` | `1000` | Metric rows per request, max 5000 |
@@ -109,7 +109,7 @@ Next.js has no runtime API for the matched route, so the template is rebuilt fro
 | `debug` | `false` | Log diagnostics with `console.warn` |
 
 ```ts
-app.use('*', totallytics({
+app.use('*', clicktag({
   consumer: (c) => c.get('account')?.id,
   ignore: (c) => c.req.path === '/health',
 }))
@@ -132,9 +132,9 @@ app.use('*', totallytics({
 ## Other frameworks
 
 ```ts
-import { Totallytics } from 'totallytics'
+import { Clicktag } from 'clicktag'
 
-const tt = new Totallytics({ integration: 'koa' })
+const tt = new Clicktag({ integration: 'koa' })
 
 // After each response
 tt.record({ method, path, route, status, durationMs, userAgent, consumer, error })
@@ -147,6 +147,10 @@ await tt.flush()
 ```
 
 The wire format is documented in [WIRE.md](./WIRE.md).
+
+## Migrating from `totallytics`
+
+This package used to be `totallytics`. Install `clicktag`, then rename the imports: `totallytics/hono` becomes `clicktag/hono`, `totallytics()` becomes `clicktag()`, `withTotallytics` becomes `withClicktag` and `Totallytics` becomes `Clicktag`. An existing `TOTALLYTICS_API_KEY` keeps working.
 
 ## License
 
