@@ -177,7 +177,7 @@ describe('hono middleware', () => {
     await app.request('/users/1', {}, env, executionCtx)
     await app.request('/users/2', {}, env, executionCtx)
     expect(waited).toHaveLength(2)
-    expect(waited[0]).toBe(waited[1])
+    expect(waited[0]).not.toBe(waited[1])
     expect(calls).toHaveLength(0)
 
     await Promise.all(waited)

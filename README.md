@@ -125,7 +125,7 @@ app.use('*', clicktag({
 
 - Duration runs from the middleware until your handler returns a response. Streaming bodies are not included, except on Express and Fastify, which measure until the response is sent. Deployed Workers only advance clocks on I/O, so purely CPU-bound handlers report about 0 ms.
 - Node, Bun and Deno flush on an unref'd timer, plus a best-effort flush on `beforeExit` and `SIGTERM`. When no other `SIGTERM` listener exists, the signal is re-raised after the flush (5 s max), so the process still terminates. On runtimes that freeze between requests, call `await middleware.flush()` yourself.
-- Workers use one shared flush per isolate, `flushDelayMs` after the first request, kept alive with `ctx.waitUntil` on every request. A full batch is sent right away.
+- Workers send one batch per isolate, `flushDelayMs` after the first request. Every request waits for that moment on its own timer through `ctx.waitUntil`, and the first to fire sends the batch, so no request ever waits on another request's promise. A full batch is sent right away.
 - Failed sends (408, 429, 5xx, network errors, timeouts) are retried, up to 3 attempts in total, with the identical payload and `batch_id`, so the server can drop duplicates. 413 splits the batch, 400 drops it, 401 drops it and warns once.
 - Express and Fastify requests aborted by the client before headers were sent are recorded as `499`.
 
