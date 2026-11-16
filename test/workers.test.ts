@@ -20,6 +20,10 @@ function fakeCtx() {
   return { ctx, promises }
 }
 
+function isSettled(promise: Promise<unknown>): Promise<boolean> {
+  return Promise.race([promise.then(() => true), new Promise<boolean>((resolve) => setTimeout(resolve, 0, false))])
+}
+
 const handler = {
   async fetch(request: Request, _env: Env, _ctx: ExecutionContextLike): Promise<Response> {
     const { pathname } = new URL(request.url)
@@ -36,7 +40,7 @@ describe('withClicktag', () => {
     expect(worker.fetch).not.toBe(handler.fetch)
   })
 
-  it('shares one delayed flush across requests through every ctx.waitUntil', async () => {
+  it('batches requests into one delayed flush, each through its own ctx.waitUntil', async () => {
     const { calls } = mockIngest()
     const worker = withClicktag(handler, {
       flushDelayMs: 20,
@@ -57,7 +61,7 @@ describe('withClicktag', () => {
 
     expect(first.promises).toHaveLength(1)
     expect(second.promises).toHaveLength(1)
-    expect(second.promises[0]).toBe(first.promises[0])
+    expect(second.promises[0]).not.toBe(first.promises[0])
     expect(calls).toHaveLength(0)
 
     await Promise.all([...first.promises, ...second.promises])
@@ -97,9 +101,25 @@ describe('withClicktag', () => {
 
     expect(calls).toHaveLength(1)
     expect(calls[0]?.payload.metrics).toHaveLength(2)
-    expect(second.promises).toHaveLength(2)
+    expect(second.promises).toHaveLength(1)
     await Promise.all([...first.promises, ...second.promises])
     expect(calls).toHaveLength(1)
+  })
+
+  it('leaves a stalled delivery to the request that sent it', async () => {
+    const { calls } = mockIngest(() => new Promise<Response>(() => undefined))
+    const worker = withClicktag(handler, { flushDelayMs: 20 })
+    const first = fakeCtx()
+    const second = fakeCtx()
+
+    await worker.fetch(new Request('https://api.example.com/a'), env, first.ctx)
+    await worker.fetch(new Request('https://api.example.com/b'), env, second.ctx)
+    await new Promise((resolve) => setTimeout(resolve, 60))
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.payload.metrics).toHaveLength(2)
+    const settled = await Promise.all([...first.promises, ...second.promises].map(isSettled))
+    expect(settled.sort()).toEqual([false, true])
   })
 
   it('supports apiKey from env, route and ignore overrides', async () => {

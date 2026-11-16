@@ -11,7 +11,6 @@ const MAX_PATH = 512
 const MAX_USER_AGENT = 512
 const MAX_CONSUMER = 128
 const MAX_MESSAGE = 1000
-const STALE_FLUSH_MS = 60_000
 
 export class Clicktag {
   apiKey: string | undefined
@@ -24,8 +23,7 @@ export class Clicktag {
   private readonly aggregator: Aggregator
   private readonly transport: Transport
   private timer: unknown
-  private scheduled: Promise<void> | undefined
-  private scheduledAt = 0
+  private flushAt = 0
 
   constructor(options: ClicktagOptions = {}) {
     this.apiKey = normalizeKey(options.apiKey) ?? defaultKey()
@@ -85,23 +83,13 @@ export class Clicktag {
     return batches
   }
 
-  // Workers: the shared flush is created inside a request that also waitUntil's it
+  // Workers: requests share the flush time but each waits on its own timer, since a promise from another request may never settle
   private scheduleWithWaitUntil(waitUntil: WaitUntil): void {
+    if (this.aggregator.size >= this.maxBatchRows) return waitUntil(this.flushBuffer())
+
     const now = Date.now()
-    const stale = now - this.scheduledAt > this.flushDelayMs + STALE_FLUSH_MS
-
-    if (this.aggregator.size >= this.maxBatchRows) waitUntil(this.flushBuffer())
-    else if (!this.scheduled || stale) {
-      const scheduled: Promise<void> = sleep(this.flushDelayMs)
-        .then(() => this.flushBuffer())
-        .finally(() => {
-          if (this.scheduled === scheduled) this.scheduled = undefined
-        })
-      this.scheduled = scheduled
-      this.scheduledAt = now
-    }
-
-    if (this.scheduled) waitUntil(this.scheduled)
+    if (this.flushAt <= now) this.flushAt = now + this.flushDelayMs
+    waitUntil(sleep(this.flushAt - now).then(() => this.flushBuffer()))
   }
 
   private scheduleWithTimer(): void {
